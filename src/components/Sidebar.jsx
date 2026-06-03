@@ -1,17 +1,46 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
-  LayoutDashboard, Dog, Users, ClipboardList,
-  Calendar, BarChart2, LogOut, Stethoscope
+  LayoutDashboard,
+  Dog,
+  Users,
+  ClipboardList,
+  Calendar,
+  BarChart2,
+  LogOut
 } from 'lucide-react'
 
 const navItems = [
-  { to: '/dashboard',  icon: <LayoutDashboard size={18}/>, label: 'Dashboard'  },
-  { to: '/mascotas',   icon: <Dog size={18}/>,             label: 'Mascotas'   },
-  { to: '/clientes',   icon: <Users size={18}/>,           label: 'Clientes'   },
-  { to: '/historial',  icon: <ClipboardList size={18}/>,   label: 'Historial'  },
-  { to: '/citas',      icon: <Calendar size={18}/>,        label: 'Citas'      },
-  { to: '/reportes',   icon: <BarChart2 size={18}/>,       label: 'Reportes'   },
+  {
+    to: '/dashboard',
+    icon: <LayoutDashboard size={18} />,
+    label: 'Dashboard'
+  },
+  {
+    to: '/mascotas',
+    icon: <Dog size={18} />,
+    label: 'Mascotas'
+  },
+  {
+    to: '/clientes',
+    icon: <Users size={18} />,
+    label: 'Clientes'
+  },
+  {
+    to: '/historial',
+    icon: <ClipboardList size={18} />,
+    label: 'Historial'
+  },
+  {
+    to: '/citas',
+    icon: <Calendar size={18} />,
+    label: 'Citas'
+  },
+  {
+    to: '/reportes',
+    icon: <BarChart2 size={18} />,
+    label: 'Reportes'
+  }
 ]
 
 export default function Sidebar() {
@@ -27,14 +56,22 @@ export default function Sidebar() {
     <aside style={styles.sidebar}>
       {/* Logo */}
       <div style={styles.logo}>
-        <div style={styles.logoIcon}>🐾</div>
+        <div style={styles.logoIcon}>
+          🐾
+        </div>
+
         <div>
-          <div style={styles.logoText}>VitalVet</div>
-          <div style={styles.logoSub}>Clínica Veterinaria</div>
+          <div style={styles.logoText}>
+            VitalVet
+          </div>
+
+          <div style={styles.logoSub}>
+            Clínica Veterinaria
+          </div>
         </div>
       </div>
 
-      {/* Nav */}
+      {/* Navegación */}
       <nav style={styles.nav}>
         {navItems.map(item => (
           <NavLink
@@ -45,25 +82,39 @@ export default function Sidebar() {
               ...(isActive ? styles.navActive : {})
             })}
           >
-            <span style={styles.navIcon}>{item.icon}</span>
+            <span style={styles.navIcon}>
+              {item.icon}
+            </span>
+
             {item.label}
           </NavLink>
         ))}
       </nav>
 
-      {/* Usuario + logout */}
+      {/* Usuario */}
       <div style={styles.bottom}>
-        <div style={styles.userBox}>
+        <div style={styles.userCard}>
           <div style={styles.avatar}>
-            {user?.username?.charAt(0).toUpperCase() || 'U'}
+            {user?.username?.charAt(0).toUpperCase() || 'A'}
           </div>
+
           <div>
-            <div style={styles.userName}>{user?.username || 'Usuario'}</div>
-            <div style={styles.userRole}>{user?.rol || 'Rol'}</div>
+            <div style={styles.userName}>
+              {user?.username || 'Administrador'}
+            </div>
+
+            <div style={styles.userRole}>
+              {user?.rol || 'Administrador'}
+            </div>
           </div>
         </div>
-        <button onClick={handleLogout} style={styles.logoutBtn}>
-          <LogOut size={16}/> Salir
+
+        <button
+          onClick={handleLogout}
+          style={styles.logoutBtn}
+        >
+          <LogOut size={16} />
+          Cerrar sesión
         </button>
       </div>
     </aside>
@@ -74,115 +125,140 @@ const styles = {
   sidebar: {
     width: 'var(--sidebar-w)',
     height: '100vh',
-    background: '#fff',
-    borderRight: '1px solid var(--border)',
+    background: '#FFFFFF',
+    borderRight: '1px solid #E2E8F0',
     display: 'flex',
     flexDirection: 'column',
     position: 'fixed',
     top: 0,
     left: 0,
     zIndex: 100,
+    boxShadow: '4px 0 20px rgba(0,0,0,.05)'
   },
+
   logo: {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
-    padding: '20px 18px',
-    borderBottom: '1px solid var(--border)',
+    gap: 12,
+    padding: '22px 18px',
+    borderBottom: '1px solid #E2E8F0'
   },
+
   logoIcon: {
-    fontSize: 26,
-    background: 'var(--primary-light)',
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    background: 'linear-gradient(135deg,#2563EB,#60A5FA)',
+    color: '#FFFFFF',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    fontSize: 24,
+    boxShadow: '0 8px 20px rgba(37,99,235,.25)'
   },
+
   logoText: {
     fontWeight: 700,
-    fontSize: 16,
-    color: 'var(--primary)',
+    fontSize: 17,
+    color: '#2563EB'
   },
+
   logoSub: {
-    fontSize: 10,
-    color: 'var(--text-muted)',
+    fontSize: 11,
+    color: '#64748B'
   },
+
   nav: {
     flex: 1,
-    padding: '12px 10px',
+    padding: '16px 10px',
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
+    gap: 6
   },
+
   navItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
-    padding: '9px 12px',
-    borderRadius: 8,
-    color: 'var(--text-sub)',
+    gap: 12,
+    padding: '12px 14px',
+    borderRadius: 12,
+    color: '#64748B',
     fontWeight: 500,
-    fontSize: 13.5,
-    transition: 'all 0.15s',
-    borderLeft: '3px solid transparent',
+    fontSize: 14,
+    textDecoration: 'none',
+    transition: 'all .25s ease',
+    borderLeft: '3px solid transparent'
   },
+
   navActive: {
-    background: 'var(--primary-light)',
-    color: 'var(--primary)',
-    borderLeft: '3px solid var(--primary)',
+    background: 'linear-gradient(135deg,#DBEAFE,#EFF6FF)',
+    color: '#2563EB',
+    borderLeft: '3px solid #2563EB',
+    fontWeight: 600
   },
+
   navIcon: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center'
   },
+
   bottom: {
-    padding: '14px 14px',
-    borderTop: '1px solid var(--border)',
+    padding: 16,
+    borderTop: '1px solid #E2E8F0',
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    gap: 12
   },
-  userBox: {
+
+  userCard: {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    background: '#F8FAFC'
   },
+
   avatar: {
-    width: 34,
-    height: 34,
+    width: 40,
+    height: 40,
     borderRadius: '50%',
-    background: 'var(--primary)',
-    color: '#fff',
+    background: 'linear-gradient(135deg,#2563EB,#3B82F6)',
+    color: '#FFFFFF',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontWeight: 700,
-    fontSize: 14,
-    flexShrink: 0,
+    fontSize: 15,
+    flexShrink: 0
   },
+
   userName: {
     fontWeight: 600,
     fontSize: 13,
-    color: 'var(--text-main)',
+    color: '#0F172A'
   },
+
   userRole: {
     fontSize: 11,
-    color: 'var(--text-muted)',
-    textTransform: 'capitalize',
+    color: '#64748B',
+    textTransform: 'capitalize'
   },
+
   logoutBtn: {
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
-    background: 'transparent',
-    border: '1px solid var(--border)',
-    borderRadius: 7,
-    padding: '7px 12px',
-    fontSize: 13,
-    color: 'var(--text-sub)',
-    width: '100%',
     justifyContent: 'center',
-  },
+    gap: 8,
+    background: '#FEF2F2',
+    color: '#DC2626',
+    border: '1px solid #FECACA',
+    borderRadius: 10,
+    padding: '10px',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all .2s ease'
+  }
 }
