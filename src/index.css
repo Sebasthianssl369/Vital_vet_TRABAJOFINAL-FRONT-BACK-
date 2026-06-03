@@ -1,0 +1,45 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary:       #E8612C;
+  --primary-dark:  #993C1D;
+  --primary-light: #FFF0E8;
+  --accent:        #F5A04A;
+  --accent-light:  #FFF8EE;
+  --bg:            #F9F5F2;
+  --bg-card:       #FFFFFF;
+  --border:        #E8E0D8;
+  --text-main:     #1A1A1A;
+  --text-sub:      #6B6B6B;
+  --text-muted:    #A0A0A0;
+  --sidebar-w:     220px;
+  --topbar-h:      58px;
+  --radius:        10px;
+  --shadow:        0 2px 10px rgba(0,0,0,0.07);
+}
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
