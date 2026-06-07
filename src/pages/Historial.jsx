@@ -1,148 +1,472 @@
-import { useState } from 'react'
-import { Search, Plus, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  Search,
+  ClipboardList,
+  CalendarDays,
+  UserRound,
+  Stethoscope,
+  Dog,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  Eye,
+  X,
+  Loader2
+} from 'lucide-react'
 
-const historiales = [
-  {
-    mascota: 'Max', especie:'Perro', raza:'Labrador', edad:3, cliente:'Carlos Pérez',
-    consultas:[
-      { id:1, fecha:'02/05/2026 10:30', veterinario:'Dr. Silva',  motivo:'Control rutinario',  diagnostico:'Leve infección ocular.', tratamiento:'Colirio antibiótico 2x/día por 7 días.', estado:'Completada' },
-      { id:2, fecha:'15/03/2026 09:00', veterinario:'Dr. Román',  motivo:'Vacunación anual',   diagnostico:'Paciente sano, apto para vacunación.', tratamiento:'Vacuna polivalente + antiparasitario.', estado:'Completada' },
-      { id:3, fecha:'08/01/2026 11:00', veterinario:'Dr. Silva',  motivo:'Vómitos frecuentes', diagnostico:'Gastritis leve.', tratamiento:'Dieta blanda 3 días + protector gástrico.', estado:'Completada' },
-    ]
-  },
-  {
-    mascota:'Luna', especie:'Gato', raza:'Siamés', edad:5, cliente:'María Torres',
-    consultas:[
-      { id:4, fecha:'01/05/2026 11:00', veterinario:'Dr. Román', motivo:'Revisión dermatológica', diagnostico:'Dermatitis alérgica leve.', tratamiento:'Antihistamínico oral 1x/día por 10 días.', estado:'Completada' },
-    ]
-  },
-]
+import {
+  getHistorial
+} from '../services/historialService'
 
-const emptyConsulta = { motivo:'', diagnostico:'', tratamiento:'', veterinario:'', estado:'Pendiente' }
+import {
+  getMascotas
+} from '../services/mascotasService'
+
+import {
+  getClientes
+} from '../services/clientesService'
+
+import {
+  getVeterinarios
+} from '../services/veterinariosService'
+
+const iconoEspecie = (especie) => {
+  if (especie === 'Perro') return '🐶'
+  if (especie === 'Gato') return '🐱'
+  if (especie === 'Conejo') return '🐰'
+  if (especie === 'Ave') return '🐦'
+  return '🐾'
+}
+
+const formatFecha = (fecha) => {
+  if (!fecha) return 'Sin fecha'
+
+  const fechaNormalizada = String(fecha).replace('T', ' ')
+  const [date, timeCompleto] = fechaNormalizada.split(' ')
+
+  if (!date) return fecha
+
+  const [year, month, day] = date.split('-')
+
+  if (!year || !month || !day) return fecha
+
+  const time = timeCompleto ? timeCompleto.slice(0, 5) : ''
+
+  return `${day}/${month}/${year}${time ? ` · ${time}` : ''}`
+}
 
 export default function Historial() {
+  const [historial, setHistorial] = useState([])
+  const [mascotas, setMascotas] = useState([])
+  const [clientes, setClientes] = useState([])
+  const [veterinarios, setVeterinarios] = useState([])
+
+  const [loading, setLoading] = useState(true)
+  const [errorPage, setErrorPage] = useState('')
+
   const [busqueda, setBusqueda] = useState('')
-  const [seleccionada, setSeleccionada] = useState(historiales[0])
-  const [modal, setModal] = useState(false)
-  const [form, setForm]   = useState(emptyConsulta)
-  const [lista, setLista] = useState(historiales)
+  const [filtroEstado, setFiltroEstado] = useState('Todos')
+  const [detalle, setDetalle] = useState(null)
 
-  const filteredMascotas = lista.filter(h =>
-    h.mascota.toLowerCase().includes(busqueda.toLowerCase()) ||
-    h.cliente.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        setLoading(true)
+        setErrorPage('')
 
-  const handleNuevaConsulta = () => {
-    if (!form.motivo || !form.veterinario) return
-    const nueva = { ...form, id: Date.now(), fecha: new Date().toLocaleString('es-PE') }
-    const updated = lista.map(h =>
-      h.mascota === seleccionada.mascota
-        ? { ...h, consultas: [nueva, ...h.consultas] }
-        : h
+        const [
+          dataHistorial,
+          dataMascotas,
+          dataClientes,
+          dataVeterinarios
+        ] = await Promise.all([
+          getHistorial(),
+          getMascotas(),
+          getClientes(),
+          getVeterinarios()
+        ])
+
+        setHistorial(dataHistorial)
+        setMascotas(dataMascotas)
+        setClientes(dataClientes)
+        setVeterinarios(dataVeterinarios)
+      } catch (error) {
+        setErrorPage(error.message || 'Error al cargar el historial clínico.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    cargarDatos()
+  }, [])
+
+  const mascotaById = (id) =>
+    mascotas.find(m => Number(m.id_mascota || m.idMascota) === Number(id))
+
+  const clienteById = (id) =>
+    clientes.find(c => Number(c.id_cliente || c.idCliente) === Number(id))
+
+  const veterinarioById = (id) =>
+    veterinarios.find(v => Number(v.id_veterinario || v.idVeterinario) === Number(id))
+
+  const normalizarHistorial = (h) => {
+    const idMascota = h.id_mascota || h.idMascota
+    const idVeterinario = h.id_veterinario || h.idVeterinario
+
+    const mascota = mascotaById(idMascota)
+    const cliente = clienteById(mascota?.id_cliente || mascota?.idCliente)
+    const veterinario = veterinarioById(idVeterinario)
+
+    return {
+      ...h,
+      id_historial: h.id_historial || h.idHistorial,
+      id_mascota: idMascota,
+      id_veterinario: idVeterinario,
+      id_cita: h.id_cita || h.idCita,
+
+      // El backend actual no tiene campo estado en historial_clinico.
+      // Lo usamos como estado visual.
+      estado: h.estado || 'Completada',
+
+      mascotaNombre: mascota?.nombre || 'Sin mascota',
+      especie: mascota?.especie || 'Otro',
+      raza: mascota?.raza || 'Sin raza',
+      edad: mascota?.edad ?? '-',
+      clienteNombre: cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Sin cliente',
+      veterinarioNombre: veterinario
+        ? `Dr(a). ${veterinario.nombre} ${veterinario.apellido}`
+        : 'Sin veterinario',
+      especialidad: veterinario?.especialidad || 'Sin especialidad',
+      motivo: h.motivo || 'Sin motivo',
+      diagnostico: h.diagnostico || 'Sin diagnóstico',
+      tratamiento: h.tratamiento || 'Sin tratamiento',
+      observaciones: h.observaciones || ''
+    }
+  }
+
+  const historialNormalizado = historial.map(normalizarHistorial)
+
+  const filtered = historialNormalizado.filter(item => {
+    const texto = `
+      ${item.clienteNombre}
+      ${item.mascotaNombre}
+      ${item.especie}
+      ${item.motivo}
+      ${item.diagnostico}
+      ${item.tratamiento}
+      ${item.veterinarioNombre}
+    `.toLowerCase()
+
+    const matchBusqueda = texto.includes(busqueda.toLowerCase())
+    const matchEstado = filtroEstado === 'Todos' || item.estado === filtroEstado
+
+    return matchBusqueda && matchEstado
+  })
+
+  const totalHistoriales = historialNormalizado.length
+  const completadas = historialNormalizado.filter(h => h.estado === 'Completada').length
+  const pendientes = historialNormalizado.filter(h => h.estado === 'Pendiente').length
+  const mascotasAtendidas = new Set(historialNormalizado.map(h => h.id_mascota)).size
+
+  const estadoStyle = {
+    Completada: {
+      background: '#D1FAE5',
+      color: '#065F46'
+    },
+    Pendiente: {
+      background: '#FEF3C7',
+      color: '#92400E'
+    },
+    Cancelada: {
+      background: '#FEE2E2',
+      color: '#991B1B'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={styles.card}>
+        <div style={styles.empty}>
+          <Loader2 size={38} color="var(--primary)" />
+          <p>Cargando historial clínico...</p>
+        </div>
+      </div>
     )
-    setLista(updated)
-    setSeleccionada(updated.find(h => h.mascota === seleccionada.mascota))
-    setModal(false)
-    setForm(emptyConsulta)
+  }
+
+  if (errorPage) {
+    return (
+      <div style={styles.card}>
+        <div style={styles.empty}>
+          <AlertCircle size={38} color="#DC2626" />
+          <p>{errorPage}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div style={{ display:'flex', gap:18, height:'calc(100vh - 60px)' }}>
-      {/* Panel izquierdo - lista mascotas */}
-      <div style={styles.panelLeft}>
-        <h2 style={styles.panelTitle}>Historial Clínico</h2>
-        <div style={styles.searchWrap}>
-          <Search size={14} style={styles.searchIcon}/>
-          <input style={styles.searchInput} placeholder="Buscar mascota..." value={busqueda} onChange={e => setBusqueda(e.target.value)}/>
-        </div>
-        <div style={styles.mascotaList}>
-          {filteredMascotas.map(h => (
-            <div
-              key={h.mascota}
-              style={{ ...styles.mascotaItem, ...(seleccionada?.mascota === h.mascota ? styles.mascotaActive : {}) }}
-              onClick={() => setSeleccionada(h)}
-            >
-              <div style={styles.mascotaIcon}>{h.especie==='Perro'?'🐶':h.especie==='Gato'?'🐱':'🐾'}</div>
-              <div>
-                <div style={styles.mascotaNombre}>{h.mascota}</div>
-                <div style={styles.mascotaSub}>{h.raza} · {h.cliente}</div>
-              </div>
-              <span style={styles.consultaCount}>{h.consultas.length}</span>
-            </div>
-          ))}
+    <div>
+      {/* HEADER */}
+      <div style={styles.header}>
+        <div>
+          <h1 style={styles.title}>Historial clínico global</h1>
+          <p style={styles.subtitle}>
+            Registro general de atenciones médicas realizadas a las mascotas.
+          </p>
         </div>
       </div>
 
-      {/* Panel derecho - consultas */}
-      <div style={styles.panelRight}>
-        {seleccionada ? (
-          <>
-            <div style={styles.rightHeader}>
-              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <div style={styles.bigIcon}>{seleccionada.especie==='Perro'?'🐶':seleccionada.especie==='Gato'?'🐱':'🐾'}</div>
-                <div>
-                  <h2 style={styles.mascotaTitle}>{seleccionada.mascota}</h2>
-                  <p style={styles.mascotaInfo}>{seleccionada.raza} · {seleccionada.edad} años · 👤 {seleccionada.cliente}</p>
-                </div>
-              </div>
-              <button style={styles.btnAdd} onClick={() => setModal(true)}><Plus size={15}/> Nueva consulta</button>
-            </div>
+      {/* KPIS */}
+      <div style={styles.kpiGrid}>
+        <div style={styles.kpiCard}>
+          <div style={{ ...styles.kpiIcon, background: 'var(--primary-light)', color: 'var(--primary)' }}>
+            <ClipboardList size={20} />
+          </div>
 
-            <div style={styles.timeline}>
-              {seleccionada.consultas.map((c, i) => (
-                <div key={c.id} style={styles.timelineItem}>
-                  <div style={{ ...styles.dot, background: i===0 ? 'var(--primary)' : 'var(--accent)' }}/>
-                  <div style={styles.consultaCard}>
-                    <div style={styles.consultaTop}>
-                      <span style={styles.consultaFecha}>{c.fecha}</span>
-                      <span style={styles.badgeOk}>{c.estado}</span>
+          <div>
+            <div style={styles.kpiValue}>{totalHistoriales}</div>
+            <div style={styles.kpiLabel}>Atenciones registradas</div>
+          </div>
+        </div>
+
+        <div style={styles.kpiCard}>
+          <div style={{ ...styles.kpiIcon, background: '#D1FAE5', color: '#059669' }}>
+            <CheckCircle size={20} />
+          </div>
+
+          <div>
+            <div style={styles.kpiValue}>{completadas}</div>
+            <div style={styles.kpiLabel}>Completadas</div>
+          </div>
+        </div>
+
+        <div style={styles.kpiCard}>
+          <div style={{ ...styles.kpiIcon, background: '#FEF3C7', color: '#D97706' }}>
+            <AlertCircle size={20} />
+          </div>
+
+          <div>
+            <div style={styles.kpiValue}>{pendientes}</div>
+            <div style={styles.kpiLabel}>Pendientes</div>
+          </div>
+        </div>
+
+        <div style={styles.kpiCard}>
+          <div style={{ ...styles.kpiIcon, background: '#DBEAFE', color: '#2563EB' }}>
+            <Dog size={20} />
+          </div>
+
+          <div>
+            <div style={styles.kpiValue}>{mascotasAtendidas}</div>
+            <div style={styles.kpiLabel}>Mascotas atendidas</div>
+          </div>
+        </div>
+      </div>
+
+      {/* FILTROS */}
+      <div style={styles.toolbar}>
+        <div style={styles.searchWrap}>
+          <Search size={15} style={styles.searchIcon} />
+
+          <input
+            style={styles.searchInput}
+            placeholder="Buscar por cliente, mascota, veterinario, motivo o diagnóstico..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+          />
+        </div>
+
+        <select
+          style={styles.select}
+          value={filtroEstado}
+          onChange={e => setFiltroEstado(e.target.value)}
+        >
+          <option>Todos</option>
+          <option>Completada</option>
+          <option>Pendiente</option>
+          <option>Cancelada</option>
+        </select>
+      </div>
+
+      {/* TABLA */}
+      <div style={styles.card}>
+        <div style={styles.cardHeader}>
+          <div>
+            <h3 style={styles.cardTitle}>Atenciones clínicas</h3>
+            <p style={styles.cardSub}>
+              {filtered.length} resultado(s) encontrados
+            </p>
+          </div>
+        </div>
+
+        <div style={styles.tableScroll}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Fecha</th>
+                <th style={styles.th}>Cliente</th>
+                <th style={styles.th}>Mascota</th>
+                <th style={styles.th}>Motivo</th>
+                <th style={styles.th}>Veterinario</th>
+                <th style={styles.th}>Estado</th>
+                <th style={styles.th}>Acción</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filtered.map((item, i) => (
+                <tr key={item.id_historial} style={i % 2 === 0 ? styles.trEven : {}}>
+                  <td style={styles.td}>
+                    <div style={styles.iconText}>
+                      <CalendarDays size={14} />
+                      <b>{formatFecha(item.fecha)}</b>
                     </div>
-                    <h4 style={styles.consultaMotivo}>{c.motivo}</h4>
-                    <div style={styles.consultaGrid}>
-                      <div><span style={styles.fieldLabel}>Diagnóstico:</span> {c.diagnostico}</div>
-                      <div><span style={styles.fieldLabel}>Tratamiento:</span> {c.tratamiento}</div>
+                  </td>
+
+                  <td style={styles.td}>
+                    <div style={styles.iconText}>
+                      <UserRound size={14} />
+                      {item.clienteNombre}
                     </div>
-                    <div style={styles.vetTag}>🩺 {c.veterinario}</div>
-                  </div>
-                </div>
+                  </td>
+
+                  <td style={styles.td}>
+                    <div style={styles.petCell}>
+                      <span style={styles.petIcon}>
+                        {iconoEspecie(item.especie)}
+                      </span>
+
+                      <div>
+                        <b>{item.mascotaNombre}</b>
+                        <p style={styles.petSub}>
+                          {item.raza} · {item.edad} años
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td style={styles.td}>
+                    <b>{item.motivo}</b>
+                  </td>
+
+                  <td style={styles.td}>
+                    <div style={styles.iconText}>
+                      <Stethoscope size={14} />
+                      {item.veterinarioNombre}
+                    </div>
+                  </td>
+
+                  <td style={styles.td}>
+                    <span style={{ ...styles.badge, ...(estadoStyle[item.estado] || {}) }}>
+                      {item.estado}
+                    </span>
+                  </td>
+
+                  <td style={styles.td}>
+                    <button style={styles.btnView} onClick={() => setDetalle(item)}>
+                      <Eye size={13} />
+                      Ver
+                    </button>
+                  </td>
+                </tr>
               ))}
-            </div>
-          </>
-        ) : (
-          <p style={{ color:'var(--text-muted)', fontSize:14 }}>Selecciona una mascota para ver su historial.</p>
+            </tbody>
+          </table>
+        </div>
+
+        {filtered.length === 0 && (
+          <div style={styles.empty}>
+            <FileText size={40} color="var(--text-muted)" />
+            <p>No hay registros en el historial.</p>
+          </div>
         )}
       </div>
 
-      {/* Modal nueva consulta */}
-      {modal && (
+      {/* MODAL DETALLE */}
+      {detalle && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
             <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>Nueva consulta — {seleccionada?.mascota}</h3>
-              <button style={styles.closeBtn} onClick={() => setModal(false)}><X size={18}/></button>
-            </div>
-            <div style={styles.modalBody}>
-              {[
-                { label:'Motivo de consulta', key:'motivo',      placeholder:'Ej: Control rutinario' },
-                { label:'Veterinario',         key:'veterinario', placeholder:'Ej: Dr. Silva' },
-                { label:'Diagnóstico',         key:'diagnostico', placeholder:'Descripción del diagnóstico...' },
-                { label:'Tratamiento',         key:'tratamiento', placeholder:'Medicamentos y dosis...' },
-              ].map(f => (
-                <div key={f.key} style={styles.field}>
-                  <label style={styles.label}>{f.label}</label>
-                  <input style={styles.input} placeholder={f.placeholder} value={form[f.key]} onChange={e => setForm({...form,[f.key]:e.target.value})}/>
-                </div>
-              ))}
-              <div style={styles.field}>
-                <label style={styles.label}>Estado</label>
-                <select style={styles.input} value={form.estado} onChange={e => setForm({...form,estado:e.target.value})}>
-                  <option>Pendiente</option><option>Completada</option>
-                </select>
+              <div>
+                <h3 style={styles.modalTitle}>Detalle de atención</h3>
+                <p style={styles.modalSub}>
+                  Información clínica registrada para la mascota.
+                </p>
               </div>
+
+              <button style={styles.closeBtn} onClick={() => setDetalle(null)}>
+                <X size={18} />
+              </button>
             </div>
-            <div style={styles.modalFooter}>
-              <button style={styles.btnCancel} onClick={() => setModal(false)}>Cancelar</button>
-              <button style={styles.btnSave}   onClick={handleNuevaConsulta}>Registrar consulta</button>
+
+            <div style={styles.modalBody}>
+              <div style={styles.detailHero}>
+                <div style={styles.detailIcon}>
+                  {iconoEspecie(detalle.especie)}
+                </div>
+
+                <div>
+                  <h2 style={styles.detailTitle}>{detalle.mascotaNombre}</h2>
+                  <p style={styles.detailSub}>
+                    {detalle.raza} · {detalle.edad} años · {detalle.especie}
+                  </p>
+
+                  <span style={{ ...styles.badge, ...(estadoStyle[detalle.estado] || {}) }}>
+                    {detalle.estado}
+                  </span>
+                </div>
+              </div>
+
+              <div style={styles.detailGrid}>
+                <div style={styles.detailBox}>
+                  <UserRound size={17} color="var(--primary)" />
+                  <span>Cliente</span>
+                  <b>{detalle.clienteNombre}</b>
+                </div>
+
+                <div style={styles.detailBox}>
+                  <Stethoscope size={17} color="var(--primary)" />
+                  <span>Veterinario</span>
+                  <b>{detalle.veterinarioNombre}</b>
+                </div>
+
+                <div style={styles.detailBox}>
+                  <CalendarDays size={17} color="var(--primary)" />
+                  <span>Fecha</span>
+                  <b>{formatFecha(detalle.fecha)}</b>
+                </div>
+              </div>
+
+              <div style={styles.clinicalBox}>
+                <h4>Motivo de consulta</h4>
+                <p>{detalle.motivo}</p>
+              </div>
+
+              <div style={styles.clinicalBox}>
+                <h4>Diagnóstico</h4>
+                <p>{detalle.diagnostico}</p>
+              </div>
+
+              <div style={styles.clinicalBox}>
+                <h4>Tratamiento</h4>
+                <p>{detalle.tratamiento}</p>
+              </div>
+
+              {detalle.observaciones && (
+                <div style={styles.clinicalBox}>
+                  <h4>Observaciones</h4>
+                  <p>{detalle.observaciones}</p>
+                </div>
+              )}
+
+              <div style={styles.noteBox}>
+                <b>Nota administrativa:</b>
+                <p>
+                  Esta vista permite al administrador consultar el historial clínico global
+                  registrado en la base de datos MySQL.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -150,47 +474,341 @@ export default function Historial() {
     </div>
   )
 }
-
 const styles = {
-  panelLeft:     { width:270, background:'#fff', borderRadius:12, border:'1px solid var(--border)', padding:18, display:'flex', flexDirection:'column', gap:12, flexShrink:0, boxShadow:'var(--shadow)', overflowY:'auto' },
-  panelTitle:    { fontSize:17, fontWeight:700 },
-  searchWrap:    { position:'relative' },
-  searchIcon:    { position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)' },
-  searchInput:   { width:'100%', padding:'8px 10px 8px 28px', border:'1px solid var(--border)', borderRadius:8, fontSize:13 },
-  mascotaList:   { display:'flex', flexDirection:'column', gap:6 },
-  mascotaItem:   { display:'flex', alignItems:'center', gap:10, padding:'10px 10px', borderRadius:9, cursor:'pointer', border:'1px solid transparent', transition:'all 0.15s' },
-  mascotaActive: { background:'var(--primary-light)', border:'1px solid var(--primary)', },
-  mascotaIcon:   { fontSize:22, flexShrink:0 },
-  mascotaNombre: { fontWeight:600, fontSize:13 },
-  mascotaSub:    { fontSize:11, color:'var(--text-muted)' },
-  consultaCount: { marginLeft:'auto', background:'var(--primary)', color:'#fff', borderRadius:20, fontSize:10, fontWeight:700, padding:'2px 7px' },
-  panelRight:    { flex:1, background:'#fff', borderRadius:12, border:'1px solid var(--border)', padding:'20px 24px', boxShadow:'var(--shadow)', overflowY:'auto' },
-  rightHeader:   { display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22, paddingBottom:18, borderBottom:'1px solid var(--border)' },
-  bigIcon:       { fontSize:36 },
-  mascotaTitle:  { fontSize:18, fontWeight:700 },
-  mascotaInfo:   { fontSize:13, color:'var(--text-sub)', marginTop:3 },
-  btnAdd:        { display:'flex', alignItems:'center', gap:7, background:'var(--primary)', color:'#fff', border:'none', borderRadius:9, padding:'9px 16px', fontWeight:600, fontSize:13 },
-  timeline:      { display:'flex', flexDirection:'column', gap:0, paddingLeft:18, borderLeft:'2px solid var(--border)' },
-  timelineItem:  { position:'relative', paddingLeft:20, paddingBottom:20 },
-  dot:           { position:'absolute', left:-9, top:14, width:16, height:16, borderRadius:'50%', border:'2px solid #fff', outline:'2px solid var(--primary)' },
-  consultaCard:  { background:'#FAFAFA', borderRadius:10, border:'1px solid var(--border)', padding:'14px 16px', display:'flex', flexDirection:'column', gap:8 },
-  consultaTop:   { display:'flex', justifyContent:'space-between', alignItems:'center' },
-  consultaFecha: { fontSize:11, color:'var(--text-muted)' },
-  badgeOk:       { background:'#D1FAE5', color:'#065F46', padding:'2px 9px', borderRadius:20, fontSize:10, fontWeight:600 },
-  consultaMotivo:{ fontSize:14, fontWeight:600, color:'var(--text-main)' },
-  consultaGrid:  { display:'flex', flexDirection:'column', gap:4, fontSize:13, color:'var(--text-sub)' },
-  fieldLabel:    { fontWeight:600, color:'var(--text-main)' },
-  vetTag:        { fontSize:11, color:'var(--text-muted)', background:'#F0F0F0', display:'inline-block', padding:'3px 10px', borderRadius:20, width:'fit-content' },
-  overlay:       { position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999 },
-  modal:         { background:'#fff', borderRadius:14, width:'100%', maxWidth:460, boxShadow:'0 20px 60px rgba(0,0,0,0.2)' },
-  modalHeader:   { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 22px', borderBottom:'1px solid var(--border)' },
-  modalTitle:    { fontSize:15, fontWeight:700 },
-  closeBtn:      { background:'transparent', border:'none', color:'var(--text-muted)', display:'flex', alignItems:'center' },
-  modalBody:     { padding:'20px 22px', display:'flex', flexDirection:'column', gap:13 },
-  modalFooter:   { padding:'14px 22px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'flex-end', gap:10 },
-  field:         { display:'flex', flexDirection:'column', gap:5 },
-  label:         { fontSize:12, fontWeight:600, color:'var(--text-sub)' },
-  input:         { padding:'9px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:13, background:'#FAFAFA' },
-  btnCancel:     { padding:'9px 18px', border:'1px solid var(--border)', borderRadius:8, background:'transparent', color:'var(--text-sub)', fontSize:13 },
-  btnSave:       { padding:'9px 18px', background:'var(--primary)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600 },
+  header: {
+    marginBottom: 22
+  },
+
+  title: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: 'var(--text-main)'
+  },
+
+  subtitle: {
+    color: 'var(--text-sub)',
+    fontSize: 13,
+    marginTop: 4
+  },
+
+  kpiGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4,1fr)',
+    gap: 14,
+    marginBottom: 20
+  },
+
+  kpiCard: {
+    background: '#fff',
+    border: '1px solid var(--border)',
+    borderRadius: 14,
+    padding: 18,
+    boxShadow: 'var(--shadow)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 13
+  },
+
+  kpiIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+
+  kpiValue: {
+    fontSize: 25,
+    fontWeight: 900,
+    color: 'var(--text-main)'
+  },
+
+  kpiLabel: {
+    fontSize: 12,
+    color: 'var(--text-sub)',
+    marginTop: 2
+  },
+
+  toolbar: {
+    background: '#fff',
+    border: '1px solid var(--border)',
+    borderRadius: 14,
+    padding: 14,
+    boxShadow: 'var(--shadow)',
+    display: 'flex',
+    gap: 12,
+    marginBottom: 18
+  },
+
+  searchWrap: {
+    position: 'relative',
+    flex: 1
+  },
+
+  searchIcon: {
+    position: 'absolute',
+    left: 12,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    color: 'var(--text-muted)'
+  },
+
+  searchInput: {
+    width: '100%',
+    padding: '11px 12px 11px 38px',
+    border: '1px solid var(--border)',
+    borderRadius: 11,
+    background: '#FAFAFA',
+    fontSize: 13,
+    color: 'var(--text-main)'
+  },
+
+  select: {
+    padding: '11px 14px',
+    border: '1px solid var(--border)',
+    borderRadius: 11,
+    background: '#FAFAFA',
+    fontSize: 13,
+    color: 'var(--text-main)',
+    minWidth: 150
+  },
+
+  card: {
+    background: '#fff',
+    borderRadius: 14,
+    overflow: 'hidden',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow)'
+  },
+
+  cardHeader: {
+    padding: '18px 20px',
+    borderBottom: '1px solid var(--border)'
+  },
+
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 900,
+    color: 'var(--text-main)'
+  },
+
+  cardSub: {
+    fontSize: 12,
+    color: 'var(--text-sub)',
+    marginTop: 3
+  },
+
+  tableScroll: {
+    width: '100%',
+    overflowX: 'auto'
+  },
+
+  table: {
+    width: '100%',
+    minWidth: 960,
+    borderCollapse: 'collapse'
+  },
+
+  th: {
+    padding: '13px 14px',
+    textAlign: 'left',
+    background: '#F9FAFB',
+    borderBottom: '1px solid var(--border)',
+    fontSize: 11,
+    fontWeight: 900,
+    color: 'var(--text-muted)',
+    textTransform: 'uppercase'
+  },
+
+  td: {
+    padding: '14px',
+    borderBottom: '1px solid #F3F4F6',
+    fontSize: 13,
+    color: 'var(--text-main)'
+  },
+
+  trEven: {
+    background: '#FEFCFB'
+  },
+
+  iconText: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    color: 'var(--text-sub)',
+    fontWeight: 700
+  },
+
+  petCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 9
+  },
+
+  petIcon: {
+    fontSize: 21
+  },
+
+  petSub: {
+    fontSize: 11,
+    color: 'var(--text-muted)',
+    marginTop: 2
+  },
+
+  badge: {
+    padding: '5px 11px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 800,
+    whiteSpace: 'nowrap'
+  },
+
+  btnView: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    background: '#EFF6FF',
+    border: '1px solid #BFDBFE',
+    color: '#2563EB',
+    borderRadius: 9,
+    padding: '7px 10px',
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: 'pointer'
+  },
+
+  empty: {
+    padding: 38,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 10,
+    color: 'var(--text-muted)',
+    fontSize: 13
+  },
+
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.45)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+    padding: 16
+  },
+
+  modal: {
+    background: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 640,
+    boxShadow: '0 25px 60px rgba(0,0,0,0.22)',
+    maxHeight: '92vh',
+    overflowY: 'auto'
+  },
+
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: '18px 22px',
+    borderBottom: '1px solid var(--border)'
+  },
+
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: 900,
+    color: 'var(--text-main)'
+  },
+
+  modalSub: {
+    fontSize: 12,
+    color: 'var(--text-sub)',
+    marginTop: 3
+  },
+
+  closeBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--text-muted)',
+    display: 'flex',
+    alignItems: 'center',
+    cursor: 'pointer'
+  },
+
+  modalBody: {
+    padding: 22,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14
+  },
+
+  detailHero: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+    paddingBottom: 16,
+    borderBottom: '1px solid var(--border)'
+  },
+
+  detailIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    background: 'var(--primary-light)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 38
+  },
+
+  detailTitle: {
+    fontSize: 24,
+    fontWeight: 900,
+    color: 'var(--text-main)'
+  },
+
+  detailSub: {
+    fontSize: 13,
+    color: 'var(--text-sub)',
+    margin: '2px 0 8px'
+  },
+
+  detailGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3,1fr)',
+    gap: 10
+  },
+
+  detailBox: {
+    background: 'var(--bg)',
+    border: '1px solid var(--border)',
+    borderRadius: 13,
+    padding: 12,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 5,
+    fontSize: 12,
+    color: 'var(--text-sub)'
+  },
+
+  clinicalBox: {
+    background: '#FAFAFA',
+    border: '1px solid var(--border)',
+    borderRadius: 13,
+    padding: 14
+  },
+
+  noteBox: {
+    background: '#FFFBEA',
+    border: '1px solid #FDE68A',
+    color: '#92400E',
+    borderRadius: 12,
+    padding: '12px 14px',
+    fontSize: 12,
+    lineHeight: 1.6
+  }
 }
